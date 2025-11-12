@@ -518,19 +518,24 @@ spec:
               value: "True"
             - name: AZURE_OPENAI_API_VERSION
               value: "2024-07-01-preview"
-            - name: AZURE_OPENAI_DEPLOYMENT_NAME # required if using Azure OpenAI
+            - name: AZURE_OPENAI_GPT_DEPLOYMENT_NAME # required if using Azure OpenAI
               value: ""
-            - name: AZURE_OPENAI_ENDPOINT # required if using Azure OpenAI
+            - name: AZURE_OPENAI_GPT_ENDPOINT # required if using Azure OpenAI
               value: ""
             - name: AZURE_OPENAI_DALLE_ENDPOINT
               value: ""
             - name: AZURE_OPENAI_DALLE_DEPLOYMENT_NAME
               value: ""
-            - name: OPENAI_API_KEY # always required
+            - name: OPENAI_GPT_API_KEY # always required
               valueFrom:
                 secretKeyRef:
-                  name: openai-api-secret
-                  key: OPENAI_API_KEY
+                  name: openai-gpt-api-secret
+                  key: OPENAI_GPT_API_KEY
+            - name: OPENAI_DALLE_API_KEY # always required
+              valueFrom:
+                secretKeyRef:
+                  name: openai-dalle-api-secret
+                  key: OPENAI_DALLE_API_KEY
           resources:
             requests:
               cpu: 20m

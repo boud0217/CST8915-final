@@ -85,7 +85,7 @@ To begin, clone the [**Algonquin Pet Store (On Steroids)**](https://github.com/r
 
 
 ## Step 2: Set Up the AKS Cluster
-Create an AKS cluster with two worker nodes for this exercise. For this step, you can refer to: [Lab 6](https://github.com/ramymohamed10/Lab6_24F_CST8915)
+Create an AKS cluster with two worker nodes for this exercise. For this step, you can refer to **Lab 6**
 
 ## Step 3: Set Up the AI Backing Services
 To enable AI-generated product descriptions and image generation features, you will deploy the required **Azure OpenAI Services** for GPT-4 (text generation) and DALL-E 3 (image generation). This step is essential to configure the **AI Service** component in the Algonquin Pet Store application.
