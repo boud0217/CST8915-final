@@ -280,6 +280,16 @@ spec:
               value: "orderdb" # Database name
             - name: ORDER_DB_COLLECTION_NAME
               value: "orders" # Collection name
+            - name: ORDER_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secrets
+                  key: mongo-root-username
+            - name: ORDER_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secrets
+                  key: mongo-root-password
           resources: # Resource requests and limits
             requests:
               cpu: 1m
