@@ -5,7 +5,7 @@ metadata:
   name: mongodb
 spec:
   serviceName: mongodb # Associated headless service for DNS resolution
-  replicas: 1 # Number of MongoDB replicas
+  replicas: 3 # Number of MongoDB replicas
   selector:
     matchLabels:
       app: mongodb # Labels to match for this StatefulSet
@@ -19,6 +19,17 @@ spec:
       containers:
         - name: mongodb
           image: mongo:4.2 # MongoDB container image version
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secrets
+                  key: mongo-root-username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secrets
+                  key: mongo-root-password
           ports:
             - containerPort: 27017 # Default MongoDB port
               name: mongodb
@@ -29,6 +40,9 @@ spec:
             limits:
               cpu: 25m # Maximum CPU
               memory: 1024Mi # Maximum Memory
+          volumeMounts: # Volume mount for data persistence
+            - name: mongo-data
+              mountPath: /data/db # MongoDB data directory
           livenessProbe: # Probe to check MongoDB health
             exec:
               command:
@@ -37,6 +51,14 @@ spec:
                 - db.runCommand('ping').ok
             initialDelaySeconds: 5 # Wait time before starting probe
             periodSeconds: 5 # Interval between probes
+  volumeClaimTemplates: # Persistent volume claims for MongoDB data. Each replicas gets its own PVC
+    - metadata:
+        name: mongo-data
+      spec:
+        accessModes: ["ReadWriteOnce"] # Access mode for the volume
+        resources:
+          requests:
+            storage: 1Gi # Requested storage size
 ---
 # Service to expose MongoDB
 apiVersion: v1
@@ -48,7 +70,7 @@ spec:
     - port: 27017 # MongoDB service port
   selector:
     app: mongodb # Target pods with label `app: mongodb`
-  type: ClusterIP # Internal cluster service
+  clusterIP: None # Headless service for StatefulSet
 ---
 # StatefulSet for RabbitMQ
 apiVersion: apps/v1
@@ -92,6 +114,8 @@ spec:
             - name: rabbitmq-enabled-plugins
               mountPath: /etc/rabbitmq/enabled_plugins
               subPath: enabled_plugins
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq # Persistent directory for RabbitMQ
       volumes:
         - name: rabbitmq-enabled-plugins
           configMap:
@@ -99,6 +123,14 @@ spec:
             items:
               - key: rabbitmq_enabled_plugins
                 path: enabled_plugins
+  volumeClaimTemplates: # Persistent volume claim for RabbitMQ data
+    - metadata:
+        name: rabbitmq-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
 ---
 # Service for RabbitMQ
 apiVersion: v1
@@ -136,7 +168,7 @@ spec:
         "kubernetes.io/os": linux
       containers:
         - name: order-service
-          image: ramymohamed/order-service-l8:latest # Custom image for order service
+          image: dolsom/order-service-l8:latest # Custom image for order service
           ports:
             - containerPort: 3000 # Order service listens on this port
           env: # Environment variables for configuration
@@ -230,7 +262,7 @@ spec:
         "kubernetes.io/os": linux
       containers:
         - name: makeline-service
-          image: ramymohamed/makeline-service-l8:latest # Custom Makeline service image
+          image: dolsom/makeline-service-l8:latest # Custom Makeline service image
           ports:
             - containerPort: 3001 # Makeline service listens on this port
           env: # Environment variables for configuration
@@ -309,7 +341,7 @@ spec:
         "kubernetes.io/os": linux
       containers:
         - name: product-service
-          image: ramymohamed/product-service-l8:latest # Custom product service image
+          image: dolsom/product-service-rust-l8:latest # Custom product service image
           ports:
             - containerPort: 3002 # Product service listens on this port
           env: # Environment variables for configuration
@@ -370,7 +402,7 @@ spec:
         "kubernetes.io/os": linux
       containers:
         - name: store-front
-          image: ramymohamed/store-front-l8:latest # Front-end store application
+          image: dolsom/store-front-l8:latest # Front-end store application
           ports:
             - containerPort: 8080 # Front-end app port
               name: store-front
@@ -440,7 +472,7 @@ spec:
         "kubernetes.io/os": linux
       containers:
         - name: store-admin
-          image: ramymohamed/store-admin-l8:latest # Admin interface for store
+          image: dolsom/store-admin-l8:latest # Admin interface for store
           ports:
             - containerPort: 8081 # Admin app port
               name: store-admin
@@ -490,91 +522,3 @@ spec:
   selector:
     app: store-admin
   type: LoadBalancer # Expose service externally via load balancer
----
-# Deployment for AI Service
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ai-service
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: ai-service
-  template:
-    metadata:
-      labels:
-        app: ai-service
-    spec:
-      nodeSelector:
-        "kubernetes.io/os": linux
-      containers:
-        - name: ai-service
-          image: ramymohamed/ai-service-l8:latest
-          ports:
-            - containerPort: 5001
-          env:
-            - name: USE_AZURE_OPENAI # set to True for Azure OpenAI, False for Public OpenAI
-              value: "True"
-            - name: AZURE_OPENAI_API_VERSION
-              value: "2024-07-01-preview"
-            - name: AZURE_OPENAI_GPT_DEPLOYMENT_NAME # required if using Azure OpenAI
-              value: ""
-            - name: AZURE_OPENAI_GPT_ENDPOINT # required if using Azure OpenAI
-              value: ""
-            - name: AZURE_OPENAI_DALLE_ENDPOINT
-              value: ""
-            - name: AZURE_OPENAI_DALLE_DEPLOYMENT_NAME
-              value: ""
-            - name: OPENAI_GPT_API_KEY # always required
-              valueFrom:
-                secretKeyRef:
-                  name: openai-gpt-api-secret
-                  key: OPENAI_GPT_API_KEY
-            - name: OPENAI_DALLE_API_KEY # always required
-              valueFrom:
-                secretKeyRef:
-                  name: openai-dalle-api-secret
-                  key: OPENAI_DALLE_API_KEY
-          resources:
-            requests:
-              cpu: 20m
-              memory: 50Mi
-            limits:
-              cpu: 50m
-              memory: 128Mi
-          startupProbe:
-            httpGet:
-              path: /health
-              port: 5001
-            initialDelaySeconds: 60
-            failureThreshold: 3
-            periodSeconds: 5
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 5001
-            initialDelaySeconds: 3
-            failureThreshold: 10
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 5001
-            initialDelaySeconds: 3
-            failureThreshold: 10
-            periodSeconds: 10
----
-# Service for AI Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: ai-service
-spec:
-  type: ClusterIP
-  ports:
-    - name: http
-      port: 5001
-      targetPort: 5001
-  selector:
-    app: ai-service
