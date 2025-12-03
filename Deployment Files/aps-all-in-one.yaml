@@ -274,22 +274,12 @@ spec:
               value: "password"
             - name: ORDER_QUEUE_NAME
               value: "orders"
+            - name: ORDER_DB_URI
+              value: "mongodb://mongodb:27017" # MongoDB connection string
             - name: ORDER_DB_NAME
               value: "orderdb" # Database name
             - name: ORDER_DB_COLLECTION_NAME
               value: "orders" # Collection name
-            - name: ORDER_DB_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: mongo-secrets
-                  key: mongo-root-username
-            - name: ORDER_DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: mongo-secrets
-                  key: mongo-root-password
-            - name: ORDER_DB_URI
-              value: "mongodb://$(ORDER_DB_USERNAME):$(ORDER_DB_PASSWORD)@mongodb:27017" # MongoDB connection string
           resources: # Resource requests and limits
             requests:
               cpu: 1m
